@@ -19,12 +19,12 @@ namespace maze_generator
     
     public class Cell
     {
-        public Borders Borders {get; set;}
+        public (int x, int y)? Prev {get; set;}
+        public List<(int x, int y)> Next {get; set;}
     }
 
     public class Generator {
         public static Cell[,] Generate(int width, int length, (int w, int l)? enter = null, (int w, int l)? exit = null) {
-            var p = (width + length) * 2 - 1;
             var rand = new Random();
 
             if (enter is null) {
@@ -38,7 +38,7 @@ namespace maze_generator
                 };
             }
 
-            if (enter is null) {
+            if (exit is null) {
                 var sideInd = rand.Next(3);
                 int w = 0, l = 0;
 
@@ -83,21 +83,21 @@ namespace maze_generator
                 }
             }
 
-            var path = new LinkedList<List<(int w, int l)>>();
-
-            path.AddFirst(new List<(int w, int l)>{enter.Value});
-
-            var usedPoints = new HashSet<(int w, int l)>();
+            var maze = new Cell[width, length];
 
             (int w, int l) curPoint = enter.Value; 
-            usedPoints.Add(curPoint);
-            while(true) {
+            
+            maze[curPoint.w, curPoint.l] = new Cell();
+            int usedPoints = 1;
+
+            while(usedPoints < width*length) {
+
                 var availablePoints = new List<(int, int)>();
 
                 //left
                 (int w, int l) next = (curPoint.w - 1, curPoint.l);
                 if (next.l >= 0 && next.l < length && next.w >= 0 && next.w < width) {
-                    if (!usedPoints.Contains(next)){
+                    if (maze[next.w, next.l] is null){
                         availablePoints.Add(next);
                     }
                 }
@@ -105,7 +105,7 @@ namespace maze_generator
                 //right
                 next = (curPoint.w + 1, curPoint.l);
                 if (next.l >= 0 && next.l < length && next.w >= 0 && next.w < width) {
-                    if (!usedPoints.Contains(next)){
+                    if (maze[next.w, next.l] is null){
                         availablePoints.Add(next);
                     }
                 }
@@ -113,7 +113,7 @@ namespace maze_generator
                 //forw
                 next = (curPoint.w, curPoint.l+1);
                 if (next.l >= 0 && next.l < length && next.w >= 0 && next.w < width) {
-                    if (!usedPoints.Contains(next)){
+                    if (maze[next.w, next.l] is null){
                         availablePoints.Add(next);
                     }
                 }
@@ -121,18 +121,35 @@ namespace maze_generator
                 //back
                 next = (curPoint.w - 1, curPoint.l-1);
                 if (next.l >= 0 && next.l < length && next.w >= 0 && next.w < width) {
-                    if (!usedPoints.Contains(next)){
+                    if (maze[next.w, next.l] is null){
                         availablePoints.Add(next);
                     }
                 }
 
                 if (availablePoints.Count == 0){
+                    var c = maze[curPoint.w, curPoint.l];
+                    if (c.Prev is null) 
+                        break;
 
+                    curPoint = c.Prev.Value;
+                    continue;
                 }
-                
+
+                var nextInd = rand.Next(availablePoints.Count);
+                (int w, int l) nextPoint = availablePoints[nextInd];
+                maze[nextPoint.w, nextPoint.l] = new Cell{
+                    Prev = curPoint
+                };
+                usedPoints++;   
+
+                maze[curPoint.w, curPoint.l].Next.Add(nextPoint);
+
+                if (exit.Value == nextPoint) continue;
+
+                curPoint = nextPoint;
             }
             
-            return null;
+            return maze;
         }
     }
 }
